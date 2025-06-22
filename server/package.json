@@ -16,6 +16,8 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.16.0",
+    "oauth": "^0.10.2",
     "twitter-api-v2": "^1.23.2"
   },
   "devDependencies": {
