@@ -8,20 +8,43 @@ app.use(express.json());
 const User = require("./models/User"); // Adjust the path as necessary
 const mongoose = require("mongoose");
 
+
+
 const JWT_SECRET = "mysecretkey";
 const OAuth = require("oauth").OAuth;
 
-mongoose
-  .connect(
-    ""
-  )
-  .finally(() => {
-    console.log("✅ Connected to MongoDB");
-  })
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+
+app.use(cors({
+  origin: 'http://localhost:8080', // your frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+
+
+
+app.use(express.json());
+
+
+app.use((req, res, next) => {
+  console.log("🌐 Incoming request from origin:", req.headers.origin);
+  next();
+});
+
+
+
+
+mongoose.connect(
+  "",
+  { useNewUrlParser: true, useUnifiedTopology: true }
+)  
+.then(() => console.log("✅ Connected to MongoDB"))
+.catch(err => console.error("❌ MongoDB connection error:", err));
 
 // ✅ Correct OAuth 1.0a client (v1.1 API)
-const client = new TwitterApi({});
+const client = new TwitterApi({
+ 
+});
 
 app.get("/tweet", async (req, res) => {
   const text = "rdx";
@@ -42,10 +65,6 @@ app.get("/tweet", async (req, res) => {
 
 const allowedOrigin = 'http://localhost:8080';
 
-app.use(cors({
-  origin: "http://localhost:8080", // frontend origin
-  credentials: false // or true if you're sending cookies
-}));
 
 
 // Step 1: Redirect to Google OAuth
@@ -58,7 +77,7 @@ app.get("/api/auth/google", (req, res) => {
   const scope = "openid email profile";
   console.log("Scope set:", scope);
 
-  const authURL = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${redirect_uri}&response_type=code&scope=${scope}`;
+  const authURL = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${redirect_uri}&response_type=code&scope=${scope}&prompt=select_account`;
   console.log("Constructed Google Auth URL:", authURL);
 
   res.redirect(authURL);
@@ -137,7 +156,7 @@ app.get("/api/auth/google/callback", async (req, res) => {
     window.opener.postMessage({
     token: '${token}',
     type: 'auth'
-    }, '*');
+    }, 'http://localhost:8080');
     window.close();
     </script>
     `;
@@ -158,131 +177,10 @@ app.get("/api/auth/google/callback", async (req, res) => {
   }
 });
 
-// Session setup to store temporary tokens
-// app.use(session({
-//   secret: 'secret',
-//   resave: false,
-//   saveUninitialized: true
-// }));
 
-// Twitter OAuth setup
-// const requestTokenURL = 'https://api.twitter.com/oauth/request_token';
-// const accessTokenURL = 'https://api.twitter.com/oauth/access_token';
-// const authenticateURL = 'https://api.twitter.com/oauth/authenticate';
-
-
-
-//    // your app secret
 
 const callbackURL = "http://localhost:5000/auth/x/callback";
 
-// const oa = new OAuth(
-//   requestTokenURL,
-//   accessTokenURL,
-//   appKey,
-//   appSecret,
-//   '1.0A',
-//   callbackURL,
-//   'HMAC-SHA1'
-// );
-
-// // Step 1: Redirect user to Twitter for login
-// app.get('/auth/x', (req, res) => {
-//   oa.getOAuthRequestToken((err, oauth_token, oauth_token_secret) => {
-//     if (err) {
-//       console.error('Error getting OAuth token:', err);
-//       return res.status(500).send('Error initiating Twitter login');
-//     }
-
-//     // Store in session for callback step
-//     req.session.oauth_token = oauth_token;
-//     req.session.oauth_token_secret = oauth_token_secret;
-
-//     const url = `${authenticateURL}?oauth_token=${oauth_token}`;
-//     res.redirect(url);
-//   });
-// });
-
-// // Step 2: Callback from Twitter
-// app.get('/auth/x/callback', (req, res) => {
-//   const { oauth_token, oauth_verifier } = req.query;
-//   const { oauth_token_secret } = req.session;
-
-//   oa.getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier,
-//     (err, access_token, access_token_secret, result) => {
-//       if (err) {
-//         console.error('Error getting access token:', err);
-//         return res.status(500).send('Twitter callback failed');
-//       }
-
-//       // ✅ Access token can now be used to make API calls on user's behalf
-//       res.json({
-//         message: 'Login successful',
-//         user: {
-//           access_token,
-//           access_token_secret,
-//           user_id: result.user_id,
-//           screen_name: result.screen_name
-//         }
-//       });
-//     }
-//   );
-// });
-
-// app.get('/auth/x', (req, res) => {
-//   oa.getOAuthRequestToken((err, oauth_token, oauth_token_secret) => {
-//     if (err) {
-//       console.error('❌ Error getting OAuth token:', err);
-//       return res.status(500).send('OAuth Init Failed');
-//     }
-
-//     tempStore[oauth_token] = oauth_token_secret;
-//     const url = `https://api.twitter.com/oauth/authenticate?oauth_token=${oauth_token}`;
-//     res.redirect(url);
-//   });
-// });
-
-// // Step 2: Twitter callback
-// app.get('/auth/x/callback', async (req, res) => {
-//   const { oauth_token, oauth_verifier } = req.query;
-//   const oauth_token_secret = tempStore[oauth_token];
-
-//   if (!oauth_token_secret) {
-//     return res.status(400).send('Session expired or invalid token');
-//   }
-
-//   oa.getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier,
-//     async (err, access_token, access_token_secret, result) => {
-//       if (err) {
-//         console.error('❌ Error getting Twitter access token:', err);
-//         return res.status(500).send('Twitter callback failed');
-//       }
-
-//       // Optionally: Check if user exists in DB
-//       let existingUser = await User.findOne({ twitterId: result.user_id });
-//       if (!existingUser) {
-//         existingUser = new User({
-//           twitterId: result.user_id,
-//           displayName: result.screen_name,
-//           twitterAccessToken: access_token,
-//           twitterAccessSecret: access_token_secret
-//         });
-//         await existingUser.save();
-//       }
-
-//       // Generate JWT
-//       const token = jwt.sign(
-//         { id: existingUser._id, twitterId: result.user_id },
-//         JWT_SECRET,
-//         { expiresIn: '1d' }
-//       );
-
-//       res.cookie('token', token, { httpOnly: true }).redirect('http://localhost:3000/dashboard');
-//     }
-//   );
-// });
-
-// Twitter OAuth Setup
 console.log("📦 Setting up Twitter OAuth");
 const oa = new OAuth(
   "https://api.twitter.com/oauth/request_token",
@@ -434,3 +332,6 @@ app.get("/api/auth/validate", authenticateToken, async (req, res) => {
 app.listen(5000, () => console.log("✅ Server running on port 5000"));
 
 ///
+
+
+
